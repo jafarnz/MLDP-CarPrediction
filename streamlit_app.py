@@ -40,20 +40,6 @@ st.title("Singapore Used Car Price Predictor")
 st.caption("Consumer-facing estimate using stable vehicle attributes. Market policy fields (e.g., COE) are intentionally excluded from core model.")
 
 
-@st.cache_data
-def load_options():
-    df = pd.read_csv(DATA_PATH)
-    df = df.replace(["N.A", "N.A.", "NA", "na", "-", ""], np.nan)
-    if "Unnamed: 18" in df.columns:
-        df = df[df["Unnamed: 18"].isna()].copy()
-    valid_transmission = ["Auto", "Manual", "Petrol-Electric", "Electric"]
-    df["Transmission"] = df["Transmission"].where(df["Transmission"].isin(valid_transmission), np.nan)
-    return {
-        "types": sorted(df["Type"].dropna().unique().tolist()),
-        "transmissions": sorted(df["Transmission"].dropna().unique().tolist()),
-    }
-
-
 def load_model():
     return joblib.load(MODEL_PATH)
 
@@ -64,26 +50,24 @@ except FileNotFoundError:
     st.error("Model file not found. Run section 4/5 in `JAFAR.ipynb` to export `car_price_model.pkl` first.")
     st.stop()
 
-options = load_options()
 current_year = pd.Timestamp("today").year
 
 type_segment_labels = {
-    "PremiummPassneger (Sports car suv luxury)": "Premium_Passenger",
-    "Mainstream Passenger (Sedan hatchback mpv wagon)": "Mainstream_Passenger",
-    "Commercial (Van truck bus/minibus)": "Commercial",
+    "PremiummPassneger (Sports car suv luxury)": 1,
+    "Others (Mainstream + Commercial)": 0,
 }
 type_group_map = {
-    "Sports Car": "Premium_Passenger",
-    "SUV": "Premium_Passenger",
-    "Luxury Sedan": "Premium_Passenger",
-    "Mid-Sized Sedan": "Mainstream_Passenger",
-    "Hatchback": "Mainstream_Passenger",
-    "MPV": "Mainstream_Passenger",
-    "Stationwagon": "Mainstream_Passenger",
-    "Others": "Mainstream_Passenger",
-    "Van": "Commercial",
-    "Truck": "Commercial",
-    "Bus/Mini Bus": "Commercial",
+    "Sports Car": 1,
+    "SUV": 1,
+    "Luxury Sedan": 1,
+    "Mid-Sized Sedan": 0,
+    "Hatchback": 0,
+    "MPV": 0,
+    "Stationwagon": 0,
+    "Others": 0,
+    "Van": 0,
+    "Truck": 0,
+    "Bus/Mini Bus": 0,
 }
 
 premium_brand_label = (
@@ -108,10 +92,10 @@ def load_segment_priors():
         "Bentley", "Ferrari", "Lamborghini", "Rolls-Royce", "Aston", "McLaren", "Infiniti"
     }
     df["Luxury_Brand"] = df["Brand_Main"].isin(premium_brands).astype(int)
-    df["Type_Group"] = df["Type"].map(type_group_map).fillna("Mainstream_Passenger")
+    df["Type_Premium"] = df["Type"].map(type_group_map).fillna(0).astype(int)
 
     priors = (
-        df.groupby(["Type_Group", "Luxury_Brand"])["Price"]
+        df.groupby(["Type_Premium", "Luxury_Brand"])["Price"]
         .median()
         .to_dict()
     )
@@ -126,10 +110,8 @@ col_a, col_b = st.columns(2)
 with col_a:
     brand_segment = st.selectbox("Brand Segment", [premium_brand_label, "Rest Non-Premium"], index=1)
     type_segment_label = st.selectbox("Type Segment", list(type_segment_labels.keys()), index=1)
-    transmission = st.selectbox("Transmission", options["transmissions"], index=0)
-    owners = st.slider("Number of Owners", min_value=1, max_value=6, value=2, step=1)
 with col_b:
-    manufactured = st.slider("Manufactured Year", min_value=1995, max_value=current_year, value=2016, step=1)
+    vehicle_age = st.slider("Vehicle Age (years)", min_value=0, max_value=30, value=10, step=1)
     mileage = st.number_input("Mileage (km)", min_value=0, max_value=800000, value=70000, step=500)
     engine_cap = st.number_input("Engine Capacity (cc)", min_value=600, max_value=7000, value=1600, step=50)
     power = st.number_input("Power (hp)", min_value=40, max_value=1000, value=110, step=1)
@@ -146,9 +128,10 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 
 if st.button("Predict Car Price", type="primary"):
-    vehicle_age = max(0.0, current_year - manufactured)
+    vehicle_age = float(vehicle_age)
+    manufactured = float(current_year - vehicle_age)
     luxury_brand = 1 if brand_segment == premium_brand_label else 0
-    type_group = type_segment_labels[type_segment_label]
+    type_premium = int(type_segment_labels[type_segment_label])
 
     if mileage <= 0:
         st.error("Mileage must be greater than 0.")
@@ -157,7 +140,7 @@ if st.button("Predict Car Price", type="primary"):
         st.error("Engine capacity and power must be greater than 0.")
         st.stop()
 
-    def predict_with_segments(curr_type_group, curr_luxury_brand):
+    def predict_with_segments(curr_type_premium, curr_luxury_brand):
         # Build model-aligned row directly to avoid one-row OHE pitfalls.
         row = {col: 0 for col in model.feature_names_in_}
         numeric_inputs = {
@@ -167,7 +150,6 @@ if st.button("Predict Car Price", type="primary"):
             "Curb Weight": float(curb_weight),
             "Manufactured": float(manufactured),
             "Power": float(power),
-            "No. of Owners": float(owners),
             "Vehicle_Age": float(vehicle_age),
             "Luxury_Brand": int(curr_luxury_brand),
         }
@@ -175,25 +157,21 @@ if st.button("Predict Car Price", type="primary"):
             if key in row:
                 row[key] = value
 
-        type_col = f"Type_Group_{curr_type_group}"
-        transmission_col = f"Transmission_{transmission}"
-        if type_col in row:
-            row[type_col] = 1
-        if transmission_col in row:
-            row[transmission_col] = 1
+        if "Type_Group_Premium_Passenger" in row:
+            row["Type_Group_Premium_Passenger"] = int(curr_type_premium)
 
         df_input = pd.DataFrame([row])
         y_pred_base = float(model.predict(df_input)[0])
-        seg_prior = float(segment_priors.get((curr_type_group, int(curr_luxury_brand)), global_median_price))
+        seg_prior = float(segment_priors.get((int(curr_type_premium), int(curr_luxury_brand)), global_median_price))
         # Stronger prior blend so segment differences are visible and stable in UI.
         y_pred_final = 0.6 * y_pred_base + 0.4 * seg_prior
         return y_pred_base, seg_prior, y_pred_final
 
-    y_pred, segment_prior, final_pred = predict_with_segments(type_group, luxury_brand)
+    y_pred, segment_prior, final_pred = predict_with_segments(type_premium, luxury_brand)
 
     st.success(f"Predicted Used Car Price: SGD ${final_pred:,.0f}")
     st.caption(
-        f"Base model: ${y_pred:,.0f} | Segment prior ({type_group}, luxury={int(luxury_brand)}): ${segment_prior:,.0f}"
+        f"Base model: ${y_pred:,.0f} | Segment prior (premium_type={type_premium}, luxury={int(luxury_brand)}): ${segment_prior:,.0f}"
     )
 
     comparison_rows = []
