@@ -55,12 +55,13 @@ def load_options():
 
 
 @st.cache_resource
-def load_model():
+def load_model(_model_mtime):
     return joblib.load(MODEL_PATH)
 
 
 try:
-    model = load_model()
+    model_mtime = MODEL_PATH.stat().st_mtime
+    model = load_model(model_mtime)
 except FileNotFoundError:
     st.error("Model file not found. Run section 4/5 in `JAFAR.ipynb` to export `car_price_model.pkl` first.")
     st.stop()
@@ -103,24 +104,32 @@ if st.button("Predict Car Price", type="primary"):
         st.error("Engine capacity and power must be greater than 0.")
         st.stop()
 
-    df_input = pd.DataFrame(
-        {
-            "Type": [car_type],
-            "Mileage": [float(mileage)],
-            "Road Tax": [float(road_tax)],
-            "Engine Cap": [float(engine_cap)],
-            "Curb Weight": [float(curb_weight)],
-            "Manufactured": [float(manufactured)],
-            "Transmission": [transmission],
-            "Power": [float(power)],
-            "No. of Owners": [float(owners)],
-            "Vehicle_Age": [float(vehicle_age)],
-            "Luxury_Brand": [int(luxury_brand)],
-        }
-    )
+    # Build model-aligned row directly to avoid one-row OHE pitfalls.
+    row = {col: 0 for col in model.feature_names_in_}
 
-    df_input = pd.get_dummies(df_input, drop_first=True)
-    df_input = df_input.reindex(columns=model.feature_names_in_, fill_value=0)
+    numeric_inputs = {
+        "Mileage": float(mileage),
+        "Road Tax": float(road_tax),
+        "Engine Cap": float(engine_cap),
+        "Curb Weight": float(curb_weight),
+        "Manufactured": float(manufactured),
+        "Power": float(power),
+        "No. of Owners": float(owners),
+        "Vehicle_Age": float(vehicle_age),
+        "Luxury_Brand": int(luxury_brand),
+    }
+    for key, value in numeric_inputs.items():
+        if key in row:
+            row[key] = value
+
+    type_col = f"Type_{car_type}"
+    transmission_col = f"Transmission_{transmission}"
+    if type_col in row:
+        row[type_col] = 1
+    if transmission_col in row:
+        row[transmission_col] = 1
+
+    df_input = pd.DataFrame([row])
 
     y_pred = float(model.predict(df_input)[0])
     st.success(f"Predicted Used Car Price: SGD ${y_pred:,.0f}")
