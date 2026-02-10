@@ -68,25 +68,23 @@ except FileNotFoundError:
 
 options = load_options()
 current_year = pd.Timestamp("today").year
-type_group_map = {
-    "Sports Car": "Premium_Passenger",
-    "SUV": "Premium_Passenger",
-    "Luxury Sedan": "Premium_Passenger",
-    "Mid-Sized Sedan": "Mainstream_Passenger",
-    "Hatchback": "Mainstream_Passenger",
-    "MPV": "Mainstream_Passenger",
-    "Stationwagon": "Mainstream_Passenger",
-    "Others": "Mainstream_Passenger",
-    "Van": "Commercial",
-    "Truck": "Commercial",
-    "Bus/Mini Bus": "Commercial",
+
+type_segment_labels = {
+    "PremiummPassneger (Sports car suv luxury)": "Premium_Passenger",
+    "Mainstream Passenger (Sedan hatchback mpv wagon)": "Mainstream_Passenger",
+    "Commercial (Van truck bus/minibus)": "Commercial",
 }
+
+premium_brand_label = (
+    "Premium (Mercedes-Benz, BMW, Audi, Lexus, Porsche, Jaguar, Land, Maserati, "
+    "Bentley, Ferrari, Lamborghini, Rolls-Royce, Aston, McLaren, Infiniti)"
+)
 
 st.markdown('<div class="card">', unsafe_allow_html=True)
 col_a, col_b = st.columns(2)
 with col_a:
-    brand_segment = st.selectbox("Brand Segment", ["Non-Luxury", "Luxury"], index=0)
-    car_type = st.selectbox("Type", options["types"], index=0)
+    brand_segment = st.selectbox("Brand Segment", [premium_brand_label, "Rest Non-Premium"], index=1)
+    type_segment_label = st.selectbox("Type Segment", list(type_segment_labels.keys()), index=1)
     transmission = st.selectbox("Transmission", options["transmissions"], index=0)
     owners = st.slider("Number of Owners", min_value=1, max_value=6, value=2, step=1)
 with col_b:
@@ -108,8 +106,8 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.button("Predict Car Price", type="primary"):
     vehicle_age = max(0.0, current_year - manufactured)
-    luxury_brand = 1 if brand_segment == "Luxury" else 0
-    type_group = type_group_map.get(car_type, "Mainstream_Passenger")
+    luxury_brand = 1 if brand_segment == premium_brand_label else 0
+    type_group = type_segment_labels[type_segment_label]
 
     if mileage <= 0:
         st.error("Mileage must be greater than 0.")
