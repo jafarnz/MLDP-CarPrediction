@@ -7,7 +7,7 @@ import streamlit as st
 
 
 MODEL_PATH = Path("car_price_model.pkl")
-DATA_PATH = Path("SG_used_car.csv")
+DATA_PATH = Path("SG_usedcar.csv")
 
 
 st.set_page_config(page_title="SG Car Price Predictor", page_icon="🚗", layout="centered")
