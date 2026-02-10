@@ -38,13 +38,6 @@ st.markdown(
 
 st.title("Singapore Used Car Price Predictor")
 st.caption("Consumer-facing estimate using stable vehicle attributes. Market policy fields (e.g., COE) are intentionally excluded from core model.")
-st.info(
-    "Segment definitions:\n"
-    "- Brand Segment `Premium`: Mercedes-Benz, BMW, Audi, Lexus, Porsche, Jaguar, Land Rover, Maserati, Bentley, Ferrari, Lamborghini, Rolls-Royce, Aston Martin, McLaren, Infiniti.\n"
-    "- Brand Segment `Non-Premium`: all other brands.\n"
-    "- Type Segment `Premium Passenger`: Sports Car, SUV, Luxury Sedan.\n"
-    "- Type Segment `Mainstream / Commercial`: all other types (e.g., sedan, hatchback, MPV, van, truck, bus)."
-)
 
 
 def load_model():
@@ -133,7 +126,7 @@ with col_d:
 st.markdown('<p class="fine">Future enhancement: add live COE/API inputs and compare baseline estimate vs market-adjusted estimate.</p>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-
+#test
 if st.button("Predict Car Price", type="primary"):
     vehicle_age = float(vehicle_age)
     manufactured = float(current_year - vehicle_age)
@@ -174,25 +167,6 @@ if st.button("Predict Car Price", type="primary"):
         y_pred_final = 0.6 * y_pred_base + 0.4 * seg_prior
         return y_pred_base, seg_prior, y_pred_final
 
-    y_pred, segment_prior, final_pred = predict_with_segments(type_premium, luxury_brand)
+    _, _, final_pred = predict_with_segments(type_premium, luxury_brand)
 
     st.success(f"Predicted Used Car Price: SGD ${final_pred:,.0f}")
-    st.caption(
-        f"Base model: ${y_pred:,.0f} | Segment prior (premium_type={type_premium}, luxury={int(luxury_brand)}): ${segment_prior:,.0f}"
-    )
-
-    comparison_rows = []
-    for tg_label, tg_value in type_segment_labels.items():
-        for bs_label, bs_value in [(premium_brand_label, 1), (non_premium_brand_label, 0)]:
-            base_tmp, prior_tmp, final_tmp = predict_with_segments(tg_value, bs_value)
-            comparison_rows.append(
-                {
-                    "Type Segment": tg_label,
-                    "Brand Segment": "Premium" if bs_value == 1 else "Non-Premium",
-                    "Base Model": round(base_tmp, 0),
-                    "Segment Prior": round(prior_tmp, 0),
-                    "Final Estimate": round(final_tmp, 0),
-                }
-            )
-    st.markdown("### Same inputs, different segments")
-    st.dataframe(pd.DataFrame(comparison_rows), hide_index=True, use_container_width=True)
