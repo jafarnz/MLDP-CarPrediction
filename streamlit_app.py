@@ -38,6 +38,13 @@ st.markdown(
 
 st.title("Singapore Used Car Price Predictor")
 st.caption("Consumer-facing estimate using stable vehicle attributes. Market policy fields (e.g., COE) are intentionally excluded from core model.")
+st.info(
+    "Segment definitions:\n"
+    "- Brand Segment `Premium`: Mercedes-Benz, BMW, Audi, Lexus, Porsche, Jaguar, Land Rover, Maserati, Bentley, Ferrari, Lamborghini, Rolls-Royce, Aston Martin, McLaren, Infiniti.\n"
+    "- Brand Segment `Non-Premium`: all other brands.\n"
+    "- Type Segment `Premium Passenger`: Sports Car, SUV, Luxury Sedan.\n"
+    "- Type Segment `Mainstream / Commercial`: all other types (e.g., sedan, hatchback, MPV, van, truck, bus)."
+)
 
 
 def load_model():
@@ -53,8 +60,8 @@ except FileNotFoundError:
 current_year = pd.Timestamp("today").year
 
 type_segment_labels = {
-    "PremiummPassneger (Sports car suv luxury)": 1,
-    "Others (Mainstream + Commercial)": 0,
+    "Premium Passenger": 1,
+    "Mainstream / Commercial": 0,
 }
 type_group_map = {
     "Sports Car": 1,
@@ -70,10 +77,8 @@ type_group_map = {
     "Bus/Mini Bus": 0,
 }
 
-premium_brand_label = (
-    "Premium (Mercedes-Benz, BMW, Audi, Lexus, Porsche, Jaguar, Land, Maserati, "
-    "Bentley, Ferrari, Lamborghini, Rolls-Royce, Aston, McLaren, Infiniti)"
-)
+premium_brand_label = "Premium"
+non_premium_brand_label = "Non-Premium"
 
 
 @st.cache_data
@@ -108,8 +113,10 @@ segment_priors, global_median_price = load_segment_priors()
 st.markdown('<div class="card">', unsafe_allow_html=True)
 col_a, col_b = st.columns(2)
 with col_a:
-    brand_segment = st.selectbox("Brand Segment", [premium_brand_label, "Rest Non-Premium"], index=1)
+    brand_segment = st.selectbox("Brand Segment", [premium_brand_label, non_premium_brand_label], index=1)
+    st.caption("Premium brands: Mercedes-Benz, BMW, Audi, Lexus, Porsche, Jaguar, Land Rover, Maserati, Bentley, Ferrari, Lamborghini, Rolls-Royce, Aston Martin, McLaren, Infiniti.")
     type_segment_label = st.selectbox("Type Segment", list(type_segment_labels.keys()), index=1)
+    st.caption("Type grouping: Premium Passenger = Sports Car, SUV, Luxury Sedan. Mainstream / Commercial = all other types.")
 with col_b:
     vehicle_age = st.slider("Vehicle Age (years)", min_value=0, max_value=30, value=10, step=1)
     mileage = st.number_input("Mileage (km)", min_value=0, max_value=800000, value=70000, step=500)
@@ -176,7 +183,7 @@ if st.button("Predict Car Price", type="primary"):
 
     comparison_rows = []
     for tg_label, tg_value in type_segment_labels.items():
-        for bs_label, bs_value in [(premium_brand_label, 1), ("Rest Non-Premium", 0)]:
+        for bs_label, bs_value in [(premium_brand_label, 1), (non_premium_brand_label, 0)]:
             base_tmp, prior_tmp, final_tmp = predict_with_segments(tg_value, bs_value)
             comparison_rows.append(
                 {
