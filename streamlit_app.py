@@ -46,11 +46,9 @@ def load_options():
     df = df.replace(["N.A", "N.A.", "NA", "na", "-", ""], np.nan)
     if "Unnamed: 18" in df.columns:
         df = df[df["Unnamed: 18"].isna()].copy()
-    df["Brand_Main"] = df["Brand"].astype(str).str.split().str[0]
     valid_transmission = ["Auto", "Manual", "Petrol-Electric", "Electric"]
     df["Transmission"] = df["Transmission"].where(df["Transmission"].isin(valid_transmission), np.nan)
     return {
-        "brands": sorted(df["Brand_Main"].dropna().unique().tolist()),
         "types": sorted(df["Type"].dropna().unique().tolist()),
         "transmissions": sorted(df["Transmission"].dropna().unique().tolist()),
     }
@@ -73,7 +71,7 @@ current_year = pd.Timestamp("today").year
 st.markdown('<div class="card">', unsafe_allow_html=True)
 col_a, col_b = st.columns(2)
 with col_a:
-    brand_main = st.selectbox("Brand", options["brands"], index=0)
+    brand_segment = st.selectbox("Brand Segment", ["Non-Luxury", "Luxury"], index=0)
     car_type = st.selectbox("Type", options["types"], index=0)
     transmission = st.selectbox("Transmission", options["transmissions"], index=0)
     owners = st.slider("Number of Owners", min_value=1, max_value=6, value=2, step=1)
@@ -96,6 +94,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.button("Predict Car Price", type="primary"):
     vehicle_age = max(0.0, current_year - manufactured)
+    luxury_brand = 1 if brand_segment == "Luxury" else 0
 
     if mileage <= 0:
         st.error("Mileage must be greater than 0.")
@@ -116,7 +115,7 @@ if st.button("Predict Car Price", type="primary"):
             "Power": [float(power)],
             "No. of Owners": [float(owners)],
             "Vehicle_Age": [float(vehicle_age)],
-            "Brand_Main": [brand_main],
+            "Luxury_Brand": [int(luxury_brand)],
         }
     )
 
