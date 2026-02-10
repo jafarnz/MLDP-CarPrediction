@@ -68,6 +68,19 @@ except FileNotFoundError:
 
 options = load_options()
 current_year = pd.Timestamp("today").year
+type_group_map = {
+    "Sports Car": "Premium_Passenger",
+    "SUV": "Premium_Passenger",
+    "Luxury Sedan": "Premium_Passenger",
+    "Mid-Sized Sedan": "Mainstream_Passenger",
+    "Hatchback": "Mainstream_Passenger",
+    "MPV": "Mainstream_Passenger",
+    "Stationwagon": "Mainstream_Passenger",
+    "Others": "Mainstream_Passenger",
+    "Van": "Commercial",
+    "Truck": "Commercial",
+    "Bus/Mini Bus": "Commercial",
+}
 
 st.markdown('<div class="card">', unsafe_allow_html=True)
 col_a, col_b = st.columns(2)
@@ -96,6 +109,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 if st.button("Predict Car Price", type="primary"):
     vehicle_age = max(0.0, current_year - manufactured)
     luxury_brand = 1 if brand_segment == "Luxury" else 0
+    type_group = type_group_map.get(car_type, "Mainstream_Passenger")
 
     if mileage <= 0:
         st.error("Mileage must be greater than 0.")
@@ -122,7 +136,7 @@ if st.button("Predict Car Price", type="primary"):
         if key in row:
             row[key] = value
 
-    type_col = f"Type_{car_type}"
+    type_col = f"Type_Group_{type_group}"
     transmission_col = f"Transmission_{transmission}"
     if type_col in row:
         row[type_col] = 1
