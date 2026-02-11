@@ -21,16 +21,39 @@ st.markdown(
             radial-gradient(circle at 90% 10%, rgba(255, 221, 184, 0.42), transparent 35%),
             linear-gradient(140deg, #f6fbff 0%, #fdfaf4 100%);
     }
-    .block-container {padding-top: 1.8rem; max-width: 900px;}
+    .block-container {padding-top: 1.5rem; max-width: 900px;}
+    h1, h2, h3, h4, h5, h6 {color: #1f2937 !important;}
+    div[data-testid="stCaptionContainer"] p {color: #475569 !important;}
+    div[data-testid="stWidgetLabel"] p {color: #1f2937 !important; font-weight: 600 !important;}
+    p, li {color: #334155;}
     .card {
-        background: rgba(255, 255, 255, 0.84);
+        background: rgba(255, 255, 255, 0.93);
         border: 1px solid rgba(17, 24, 39, 0.08);
         border-radius: 18px;
-        padding: 1rem 1.1rem;
+        padding: 1rem 1.05rem;
         box-shadow: 0 10px 30px rgba(20, 26, 40, 0.08);
         margin-bottom: 0.9rem;
     }
-    .fine {color: #425466; font-size: 0.93rem;}
+    .fine {color: #475569; font-size: 0.92rem;}
+    div[data-testid="stAlert"] p {color: #0f172a !important;}
+    @media (max-width: 640px) {
+        .block-container {
+            padding-top: 0.8rem;
+            padding-left: 0.7rem;
+            padding-right: 0.7rem;
+        }
+        h1 {
+            font-size: 1.95rem !important;
+            line-height: 1.2 !important;
+        }
+        .card {
+            border-radius: 14px;
+            padding: 0.85rem 0.8rem;
+        }
+        .fine {
+            font-size: 0.84rem;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
